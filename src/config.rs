@@ -17,16 +17,17 @@ impl Config {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lint {
-    linter: String,
-    file_ext: String,
-    linter_args: Option<Vec<String>>,
+    pub linter: String,
+    pub file_ext: String,
+    pub single_file: bool,
+    pub linter_args: Option<Vec<String>>,
 }
 
 impl Lint {
     pub fn to_string(&self) -> String {
         format!(
-            " - Linter: {}\n - File Extension: {}\n - Linter Args: {:?}",
-            self.linter, self.file_ext, self.linter_args
+            " - Linter: {}\n - File Extension: {}\n - Run only on edited files: {}\n - Linter Args: {:?}",
+            self.linter, self.file_ext, self.single_file, self.linter_args
         )
     }
 }

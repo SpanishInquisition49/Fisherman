@@ -1,6 +1,10 @@
 mod config;
+mod linter;
 use crate::config::Config;
+use crate::linter::lint;
+use std::env;
 use std::fs;
+use std::process::exit;
 
 const CONFIG_FILE: &str = ".fishermanrc.toml";
 
@@ -10,15 +14,26 @@ fn main() {
         Ok(result) => Some(toml::from_str(&result).unwrap()),
         Err(_) => None,
     };
+    let args: Vec<String> = env::args().collect();
 
-    match config {
-        Some(c) => {
-            specs(c);
+    if args.len() == 1 {
+        match config {
+            Some(c) => {
+                specs(c);
+            }
+            None => {
+                init();
+            }
+        };
+    } else {
+        match config {
+            Some(c) => execute(&args[1], c),
+            None => {
+                println!("Error: no configutation found");
+                exit(1);
+            }
         }
-        None => {
-            init();
-        }
-    };
+    }
 }
 
 fn init() {
@@ -28,4 +43,13 @@ fn init() {
 
 fn specs(config: Config) {
     println!("Fisherman features:\n{}", config.to_string());
+}
+
+fn execute(action: &str, config: Config) {
+    match action {
+        "Linter" => lint(config.lint),
+        _ => {
+            println!("Nothing to do");
+        }
+    }
 }
