@@ -10,7 +10,7 @@ impl Config {
     pub fn to_string(&self) -> String {
         match &self.lint {
             Some(lint) => format!("Lint:\n{}", lint.to_string()),
-            None => format!("Lint: disabled"),
+            None => "Lint: disabled".to_string(),
         }
     }
 }

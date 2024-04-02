@@ -50,14 +50,14 @@ fn lint_file(lint: &Lint) -> bool {
         .output()
         .expect("git cannot be executed");
     let staged_files = String::from_utf8(staged_files.stdout).unwrap();
-    let staged_files = staged_files.split("\n");
+    let staged_files = staged_files.split('\n');
     let re = Regex::new(&lint.file_ext).unwrap();
     for file in staged_files {
         if re.is_match(file.as_bytes()) {
             println!("{}", file);
             let binding = Vec::new();
             let args: &Vec<String> = match &lint.linter_args {
-                Some(args) => &args,
+                Some(args) => args,
                 None => &binding,
             };
 
@@ -80,7 +80,7 @@ fn lint_project(lint: &Lint) -> bool {
     println!("Fisherman: Run linter `{}` on whole project", &lint.linter);
     let binding = Vec::new();
     let args: &Vec<String> = match &lint.linter_args {
-        Some(args) => &args,
+        Some(args) => args,
         None => &binding,
     };
 
