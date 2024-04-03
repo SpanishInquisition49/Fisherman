@@ -1,7 +1,9 @@
 mod config;
 mod linter;
+mod tester;
 use crate::config::Config;
 use crate::linter::lint;
+use crate::tester::test;
 use std::env;
 use std::fs;
 use std::process::exit;
@@ -48,6 +50,7 @@ fn specs(config: Config) {
 fn execute(action: &str, config: Config) {
     match action {
         "Linter" => lint(config.lint),
+        "Test" => test(config.test),
         _ => {
             println!("Nothing to do");
         }

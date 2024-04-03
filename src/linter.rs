@@ -1,8 +1,5 @@
 use regex::bytes::Regex;
-use std::{
-    io::{self, Write},
-    process::{exit, Command},
-};
+use std::process::{exit, Command};
 
 use crate::config::Lint;
 
@@ -68,8 +65,10 @@ fn lint_file(lint: &Lint) -> bool {
                 .expect("");
             if !output.status.success() {
                 res = false;
-                io::stdout().write_all(&output.stdout).unwrap();
-                io::stderr().write_all(&output.stderr).unwrap();
+                let sout = String::from_utf8(output.stdout).expect("Not UTF-8");
+                let serr = String::from_utf8(output.stderr).expect("Not UTF-8");
+                println!("{}", sout);
+                println!("{}", serr);
             }
         }
     }
@@ -86,8 +85,10 @@ fn lint_project(lint: &Lint) -> bool {
 
     let output = Command::new(&lint.linter).args(args).output().expect("");
     if !output.status.success() {
-        io::stdout().write_all(&output.stdout).unwrap();
-        io::stderr().write_all(&output.stderr).unwrap();
+        let sout = String::from_utf8(output.stdout).expect("Not UTF-8");
+        let serr = String::from_utf8(output.stderr).expect("Not UTF-8");
+        println!("{}", sout);
+        println!("{}", serr);
     }
     output.status.success()
 }
