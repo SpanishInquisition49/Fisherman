@@ -1,3 +1,5 @@
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -7,18 +9,18 @@ pub struct Config {
     // TODO: add test and commit message validation logic
 }
 
-impl Config {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt: String = "".to_owned();
         match &self.lint {
-            Some(lint) => fmt.push_str(&format!("Lint:\n{}", lint.to_string())),
+            Some(lint) => fmt.push_str(&format!("Lint:\n{}", lint)),
             None => fmt.push_str("Lint: disabled"),
         };
         match &self.test {
-            Some(test) => fmt.push_str(&format!("Test:\n{}", test.to_string())),
+            Some(test) => fmt.push_str(&format!("Test:\n{}", test)),
             None => fmt.push_str("Test: disabled"),
         }
-        fmt
+        write!(f, "{}", fmt)
     }
 }
 
@@ -30,9 +32,10 @@ pub struct Lint {
     pub linter_args: Option<Vec<String>>,
 }
 
-impl Lint {
-    pub fn to_string(&self) -> String {
-        format!(
+impl fmt::Display for Lint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
             " - Linter: \"{}\"\n - File Extension: \"{}\"\n - Run only on edited files: {}\n - Linter Args: {:?}\n",
             self.linter, self.file_ext, self.single_file, self.linter_args
         )
@@ -45,9 +48,10 @@ pub struct Test {
     pub tester_args: Option<Vec<String>>,
 }
 
-impl Test {
-    pub fn to_string(&self) -> String {
-        format!(
+impl fmt::Display for Test {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
             " - Tester: \"{}\"\n - Tester Args: {:?}\n",
             self.tester, self.tester_args
         )

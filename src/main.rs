@@ -44,7 +44,7 @@ fn init() {
 }
 
 fn specs(config: Config) {
-    println!("Fisherman features:\n{}", config.to_string());
+    println!("Fisherman features:\n{}", config);
 }
 
 fn execute(action: &str, config: Config) {
