@@ -1,7 +1,29 @@
+use inquire::{Confirm, Text};
 use regex::bytes::Regex;
 use std::process::{exit, Command};
 
 use crate::config::Lint;
+
+pub fn lint_init() -> Lint {
+    let mut lint_config = Lint {
+        linter: "".to_owned(),
+        file_ext: "".to_owned(),
+        single_file: true,
+        linter_args: None,
+    };
+    lint_config.linter = Text::new("Linter program:").prompt().unwrap();
+    lint_config.file_ext = Text::new("File extension regex").prompt().unwrap();
+    lint_config.single_file = Confirm::new("Run only on modified files?")
+        .prompt()
+        .unwrap();
+    let linter_args = Text::new("Linter args:")
+        .with_help_message("<esc> to skip")
+        .prompt_skippable()
+        .unwrap();
+    lint_config.linter_args =
+        linter_args.map(|args| args.split_whitespace().map(|v| v.to_string()).collect());
+    lint_config
+}
 
 pub fn lint(lint: Option<Lint>) {
     match lint {

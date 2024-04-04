@@ -2,10 +2,12 @@ mod config;
 mod linter;
 mod tester;
 use crate::config::Config;
-use crate::linter::lint;
-use crate::tester::test;
+use crate::linter::{lint, lint_init};
+use crate::tester::{test, test_init};
+use inquire::MultiSelect;
 use std::env;
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
 use std::process::exit;
 
 const CONFIG_FILE: &str = ".fishermanrc.toml";
@@ -39,8 +41,50 @@ fn main() {
 }
 
 fn init() {
+    let mut config: Config = Config {
+        lint: None,
+        test: None,
+    };
     println!("Welcome to fisherman, your git hooks manager!");
-    // TODO: Add .fishermanrc.toml generation
+    let options = vec!["Linting", "Testing"];
+    let ans = match MultiSelect::new("Select the feature to enable:", options).prompt() {
+        Ok(res) => res,
+        Err(e) => {
+            println!("Error: {e}");
+            exit(1);
+        }
+    };
+    for feature in ans {
+        match feature {
+            "Linting" => {
+                config.lint = Some(lint_init());
+            }
+            "Testing" => {
+                config.test = Some(test_init());
+            }
+            _ => (),
+        };
+    }
+    let toml = toml::to_string(&config);
+    match toml {
+        Ok(mut toml) => {
+            println!("{toml}");
+            let mut file = File::create(CONFIG_FILE).unwrap();
+            unsafe {
+                match file.write_all(toml.as_bytes_mut()) {
+                    Ok(_) => println!("Configuration created!"),
+                    Err(e) => {
+                        println!("Error: {e}");
+                        exit(1);
+                    }
+                };
+            };
+        }
+        Err(e) => {
+            println!("{e}");
+            exit(1);
+        }
+    }
 }
 
 fn specs(config: Config) {
@@ -49,8 +93,9 @@ fn specs(config: Config) {
 
 fn execute(action: &str, config: Config) {
     match action {
-        "Linter" => lint(config.lint),
-        "Test" => test(config.test),
+        "init" => init(),
+        "linter" => lint(config.lint),
+        "test" => test(config.test),
         _ => {
             println!("Nothing to do");
         }

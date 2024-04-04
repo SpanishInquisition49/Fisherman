@@ -1,6 +1,21 @@
+use crate::config::Test;
+use inquire::Text;
 use std::process::{exit, Command};
 
-use crate::config::Test;
+pub fn test_init() -> Test {
+    let mut test_config = Test {
+        tester: "".to_owned(),
+        tester_args: None,
+    };
+    test_config.tester = Text::new("Tester program:").prompt().unwrap();
+    let tester_args = Text::new("Tester args:")
+        .with_help_message("<esc> to skip")
+        .prompt_skippable()
+        .unwrap();
+    test_config.tester_args =
+        tester_args.map(|args| args.split_whitespace().map(|v| v.to_string()).collect());
+    test_config
+}
 
 pub fn test(test: Option<Test>) {
     match test {
