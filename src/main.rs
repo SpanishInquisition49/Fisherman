@@ -8,6 +8,7 @@ use inquire::MultiSelect;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
+use std::path::Path;
 use std::process::exit;
 
 const CONFIG_FILE: &str = ".fishermanrc.toml";
@@ -41,11 +42,15 @@ fn main() {
 }
 
 fn init() {
+    println!("Welcome to fisherman, your git hooks manager!");
+    if !Path::new("./.git/").exists() {
+        println!("git is not initialized in this directory");
+        exit(1);
+    }
     let mut config: Config = Config {
         lint: None,
         test: None,
     };
-    println!("Welcome to fisherman, your git hooks manager!");
     let options = vec!["Linting", "Testing"];
     let ans = match MultiSelect::new("Select the feature to enable:", options).prompt() {
         Ok(res) => res,

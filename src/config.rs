@@ -1,3 +1,4 @@
+use colored::Colorize;
 use core::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -13,11 +14,11 @@ impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt: String = "".to_owned();
         match &self.lint {
-            Some(lint) => fmt.push_str(&format!("Lint:\n{}", lint)),
+            Some(lint) => fmt.push_str(&format!("{}{}", "Lint:\n".bold().green(), lint)),
             None => fmt.push_str("Lint: disabled"),
         };
         match &self.test {
-            Some(test) => fmt.push_str(&format!("Test:\n{}", test)),
+            Some(test) => fmt.push_str(&format!("{}{}", "Test:\n".bold().green(), test)),
             None => fmt.push_str("Test: disabled"),
         }
         write!(f, "{}", fmt)
@@ -34,10 +35,20 @@ pub struct Lint {
 
 impl fmt::Display for Lint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt_args = "".to_owned();
+        match &self.linter_args {
+            Some(args) => fmt_args.push_str(&format!(
+                "{}{}{}",
+                "[".red(),
+                args.join(", ").yellow(),
+                "]".red()
+            )),
+            None => fmt_args.push_str("None"),
+        }
         write!(
             f,
-            " - Linter: \"{}\"\n - File Extension: \"{}\"\n - Run only on edited files: {}\n - Linter Args: {:?}\n",
-            self.linter, self.file_ext, self.single_file, self.linter_args
+            " - Linter: \"{}\"\n - File Extension: \"{}\"\n - Run only on edited files: {}\n - Linter Args: {}\n",
+            self.linter.yellow(), self.file_ext.yellow(), self.single_file.to_string().purple(), fmt_args
         )
     }
 }
@@ -50,10 +61,27 @@ pub struct Test {
 
 impl fmt::Display for Test {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut fmt_args = "".to_owned();
+        match &self.tester_args {
+            Some(args) => {
+                fmt_args.push_str("[");
+                let mut index = 0;
+                for arg in args {
+                    if index == args.len() - 1 {
+                        fmt_args.push_str(&format!(r#""{}""#, arg))
+                    } else {
+                        fmt_args.push_str(&format!(r#""{}", "#, arg));
+                    }
+                    index = index + 1;
+                }
+                fmt_args.push_str("]");
+            }
+            None => fmt_args.push_str("None"),
+        }
         write!(
             f,
-            " - Tester: \"{}\"\n - Tester Args: {:?}\n",
-            self.tester, self.tester_args
+            " - Tester: \"{}\"\n - Tester Args: {}\n",
+            self.tester, fmt_args
         )
     }
 }
