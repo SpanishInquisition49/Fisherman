@@ -1,4 +1,4 @@
-use crate::config::Test;
+use crate::config::{Args, Test};
 use inquire::Text;
 use std::process::{exit, Command};
 
@@ -13,7 +13,7 @@ pub fn test_init() -> Test {
         .prompt_skippable()
         .unwrap();
     test_config.tester_args =
-        tester_args.map(|args| args.split_whitespace().map(|v| v.to_string()).collect());
+        tester_args.map(|args| Args(args.split_whitespace().map(|v| v.to_string()).collect()));
     test_config
 }
 
@@ -41,7 +41,7 @@ fn run(test: Test) {
 
     let binding = Vec::new();
     let args: &Vec<String> = match &test.tester_args {
-        Some(args) => args,
+        Some(args) => &args.0,
         None => &binding,
     };
 

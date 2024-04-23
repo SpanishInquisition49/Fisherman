@@ -2,7 +2,7 @@ use inquire::{Confirm, Text};
 use regex::bytes::Regex;
 use std::process::{exit, Command};
 
-use crate::config::Lint;
+use crate::config::{Args, Lint};
 
 pub fn lint_init() -> Lint {
     let mut lint_config = Lint {
@@ -14,6 +14,7 @@ pub fn lint_init() -> Lint {
     lint_config.linter = Text::new("Linter program:").prompt().unwrap();
     lint_config.file_ext = Text::new("File extension regex").prompt().unwrap();
     lint_config.single_file = Confirm::new("Run only on modified files?")
+        .with_help_message("y/n")
         .prompt()
         .unwrap();
     let linter_args = Text::new("Linter args:")
@@ -21,7 +22,7 @@ pub fn lint_init() -> Lint {
         .prompt_skippable()
         .unwrap();
     lint_config.linter_args =
-        linter_args.map(|args| args.split_whitespace().map(|v| v.to_string()).collect());
+        linter_args.map(|args| Args(args.split_whitespace().map(|v| v.to_string()).collect()));
     lint_config
 }
 
@@ -76,7 +77,7 @@ fn lint_file(lint: &Lint) -> bool {
             println!("{}", file);
             let binding = Vec::new();
             let args: &Vec<String> = match &lint.linter_args {
-                Some(args) => args,
+                Some(args) => &args.0,
                 None => &binding,
             };
 
@@ -101,7 +102,7 @@ fn lint_project(lint: &Lint) -> bool {
     println!("Fisherman: Run linter `{}` on whole project", &lint.linter);
     let binding = Vec::new();
     let args: &Vec<String> = match &lint.linter_args {
-        Some(args) => args,
+        Some(args) => &args.0,
         None => &binding,
     };
 

@@ -1,15 +1,16 @@
 mod config;
 mod linter;
+mod logger;
 mod tester;
 use crate::config::Config;
 use crate::linter::{lint, lint_init};
 use crate::tester::{test, test_init};
 use inquire::MultiSelect;
+use logger::log_error;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
-use std::process::exit;
 
 const CONFIG_FILE: &str = ".fishermanrc.toml";
 
@@ -34,8 +35,7 @@ fn main() {
         match config {
             Some(c) => execute(&args[1], c),
             None => {
-                println!("Error: no configutation found");
-                exit(1);
+                log_error("no configutation found", true);
             }
         }
     }
@@ -44,22 +44,21 @@ fn main() {
 fn init() {
     println!("Welcome to fisherman, your git hooks manager!");
     if !Path::new("./.git/").exists() {
-        println!("git is not initialized in this directory");
-        exit(1);
+        log_error("git is not initialized in this directory", true);
     }
     let mut config: Config = Config {
         lint: None,
         test: None,
     };
     let options = vec!["Linting", "Testing"];
-    let ans = match MultiSelect::new("Select the feature to enable:", options).prompt() {
+    let answers = match MultiSelect::new("Select the feature to enable:", options).prompt() {
         Ok(res) => res,
         Err(e) => {
-            println!("Error: {e}");
-            exit(1);
+            log_error(&e.to_string(), true);
+            unreachable!();
         }
     };
-    for feature in ans {
+    for feature in answers {
         match feature {
             "Linting" => {
                 config.lint = Some(lint_init());
@@ -73,21 +72,19 @@ fn init() {
     let toml = toml::to_string(&config);
     match toml {
         Ok(mut toml) => {
-            println!("{toml}");
             let mut file = File::create(CONFIG_FILE).unwrap();
+            println!("{}", config);
             unsafe {
                 match file.write_all(toml.as_bytes_mut()) {
                     Ok(_) => println!("Configuration created!"),
                     Err(e) => {
-                        println!("Error: {e}");
-                        exit(1);
+                        log_error(&e.to_string(), true);
                     }
                 };
             };
         }
         Err(e) => {
-            println!("{e}");
-            exit(1);
+            log_error(&e.to_string(), true);
         }
     }
 }
