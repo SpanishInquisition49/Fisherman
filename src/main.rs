@@ -1,18 +1,19 @@
+mod commit_message;
 mod config;
 mod linter;
 mod logger;
+mod pre_commit;
 mod tester;
-use crate::config::Config;
-use crate::linter::{lint, lint_init};
-use crate::tester::{test, test_init};
-use inquire::MultiSelect;
+use config::Config;
 use logger::log_error;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-const CONFIG_FILE: &str = ".fishermanrc.toml";
+use crate::pre_commit::PreCommit;
+
+const CONFIG_FILE: &str = ".fisherman.toml";
 
 fn main() {
     // Get Toml config
@@ -33,7 +34,7 @@ fn main() {
         };
     } else {
         match config {
-            Some(c) => execute(&args[1], c),
+            Some(c) => execute(args, c),
             None => {
                 log_error("no configutation found", true);
             }
@@ -46,29 +47,8 @@ fn init() {
     if !Path::new("./.git/").exists() {
         log_error("git is not initialized in this directory", true);
     }
-    let mut config: Config = Config {
-        lint: None,
-        test: None,
-    };
-    let options = vec!["Linting", "Testing"];
-    let answers = match MultiSelect::new("Select the feature to enable:", options).prompt() {
-        Ok(res) => res,
-        Err(e) => {
-            log_error(&e.to_string(), true);
-            unreachable!();
-        }
-    };
-    for feature in answers {
-        match feature {
-            "Linting" => {
-                config.lint = Some(lint_init());
-            }
-            "Testing" => {
-                config.test = Some(test_init());
-            }
-            _ => (),
-        };
-    }
+
+    let config = Config::init();
     let toml = toml::to_string(&config);
     match toml {
         Ok(mut toml) => {
@@ -93,13 +73,40 @@ fn specs(config: Config) {
     println!("Fisherman features:\n{}", config);
 }
 
-fn execute(action: &str, config: Config) {
+fn execute(args: Vec<String>, config: Config) {
+    let pre_commit = config.pre_commit.unwrap_or(PreCommit {
+        lint: None,
+        test: None,
+    });
+    let action: &str = &args[1];
+    println!("Fisherman:");
     match action {
         "init" => init(),
-        "linter" => lint(config.lint),
-        "test" => test(config.test),
+        "linter" => {
+            if pre_commit.lint.is_some() {
+                pre_commit.lint.unwrap().run();
+            } else {
+                log_error("lint config not found", true);
+            }
+        }
+        "test" => {
+            if pre_commit.test.is_some() {
+                pre_commit.test.unwrap().run();
+            } else {
+                log_error("test config not found", true);
+            }
+        }
+        "pre-commit" => {
+            pre_commit.run();
+        }
+        "commit-message" => {
+            if config.commit_message.is_some() {
+                config.commit_message.unwrap().run();
+            }
+        }
         _ => {
             println!("Nothing to do");
         }
     }
+    println!("All Done!")
 }
