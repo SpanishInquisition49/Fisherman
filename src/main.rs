@@ -4,14 +4,18 @@ mod linter;
 mod logger;
 mod pre_commit;
 mod tester;
+mod flags;
 use config::Config;
+use std::str::FromStr;
 use logger::log_error;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
+use flags::Flags;
 
 use crate::pre_commit::PreCommit;
+
 
 const CONFIG_FILE: &str = ".fisherman.toml";
 
@@ -24,9 +28,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() == 1 {
-        match config {
+     match config {
             Some(c) => {
-                specs(c);
+                specs(&c);
             }
             None => {
                 init();
@@ -43,7 +47,7 @@ fn main() {
 }
 
 fn init() {
-    println!("Welcome to fisherman, your git hooks manager!");
+    eprintln!("Welcome to fisherman, your git hooks manager!");
     if !Path::new("./.git/").exists() {
         log_error("git is not initialized in this directory", true);
     }
@@ -53,10 +57,10 @@ fn init() {
     match toml {
         Ok(mut toml) => {
             let mut file = File::create(CONFIG_FILE).unwrap();
-            println!("{}", config);
+            eprintln!("{}", config);
             unsafe {
                 match file.write_all(toml.as_bytes_mut()) {
-                    Ok(_) => println!("Configuration created!"),
+                    Ok(_) => eprintln!("Configuration created!"),
                     Err(e) => {
                         log_error(&e.to_string(), true);
                     }
@@ -69,44 +73,50 @@ fn init() {
     }
 }
 
-fn specs(config: Config) {
-    println!("Fisherman features:\n{}", config);
+fn specs(config: &Config) {
+    eprintln!("Fisherman features:\n{}", config);
 }
 
 fn execute(args: Vec<String>, config: Config) {
-    let pre_commit = config.pre_commit.unwrap_or(PreCommit {
+    let pre_commit = config.pre_commit.clone().unwrap_or(PreCommit {
         lint: None,
         test: None,
     });
-    let action: &str = &args[1];
-    println!("Fisherman:");
+    env::set_current_dir(&config.root_directory).unwrap();
+    let action: Flags = Flags::from_str(&args[1]).unwrap();
     match action {
-        "init" => init(),
-        "linter" => {
+        Flags::Init => init(),
+        Flags::Lint => {
             if pre_commit.lint.is_some() {
                 pre_commit.lint.unwrap().run();
             } else {
                 log_error("lint config not found", true);
             }
         }
-        "test" => {
+        Flags::Test => {
             if pre_commit.test.is_some() {
                 pre_commit.test.unwrap().run();
             } else {
                 log_error("test config not found", true);
             }
         }
-        "pre-commit" => {
+        Flags::PreCommit => {
             pre_commit.run();
         }
-        "commit-message" => {
+        Flags::CommitMessage => {
+            let commit_message_path = &args[2.. args.len()];
             if config.commit_message.is_some() {
-                config.commit_message.unwrap().run();
+                config.commit_message.unwrap().run(Some(&commit_message_path.join(" ")), None);
             }
         }
+        Flags::ShowConfig => {
+            specs(&config)
+        },
+
+        Flags::ApplyHooks => config.apply(),
+        Flags::Help => (),
         _ => {
-            println!("Nothing to do");
+            eprintln!("Nothing to do");
         }
     }
-    println!("All Done!")
 }

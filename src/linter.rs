@@ -5,82 +5,75 @@ use regex::bytes::Regex;
 use spinners::{Spinner, Spinners};
 use std::process::{exit, Command};
 
-use crate::config::{fmt_single_parameter, Args};
+use crate::config::{fmt_single_parameter, Cmd};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Lint {
-    pub linter: String,
+    pub command: Cmd,
     pub file_ext: String,
     pub single_file: bool,
-    pub linter_args: Option<Args>,
 }
 
 impl fmt::Display for Lint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut fmt_args = String::from("");
-        match &self.linter_args {
+        match &self.command.args {
             Some(args) => fmt_args.push_str(&format!("{}", args)),
             None => fmt_args.push_str("None"),
         }
         write!(
             f,
             "  - Command: {}\n  - File Extension: {}\n  - Run only on edited files: {}\n  - Command Args: {}\n",
-            fmt_single_parameter(&self.linter), fmt_single_parameter(&self.file_ext), self.single_file.to_string().purple(), fmt_args
+            fmt_single_parameter(&self.command.name), fmt_single_parameter(&self.file_ext), self.single_file.to_string().purple(), fmt_args
         )
     }
 }
 
 impl Lint {
     pub fn init() -> Lint {
-        let mut lint_config = Lint {
-            linter: String::from(""),
-            file_ext: String::from(""),
-            single_file: true,
-            linter_args: None,
-        };
-        lint_config.linter = Text::new("Linter program:").prompt().unwrap();
-        lint_config.file_ext = Text::new("File extension regex").prompt().unwrap();
-        lint_config.single_file = Confirm::new("Run only on modified files?")
+        let command = Cmd::init("Linter program:");
+        let file_ext = Text::new("File extension regex").prompt().unwrap();
+        let single_file = Confirm::new("Run only on modified files?")
             .with_help_message("y/n")
             .prompt()
             .unwrap();
-        let linter_args = Text::new("Linter args:")
-            .with_help_message("<esc> to skip")
-            .prompt_skippable()
-            .unwrap();
-        lint_config.linter_args =
-            linter_args.map(|args| Args(args.split_whitespace().map(|v| v.to_string()).collect()));
-        lint_config
+        Lint {
+            command,
+            file_ext,
+            single_file,
+        }
     }
 
     pub fn run(&self) {
-        let output = Command::new("which")
-            .arg(&self.linter)
-            .output()
-            .expect("cannot run which");
-
-        if !output.status.success() {
-            println!("Fisherman Error: Linter `{}` not found.", &self.linter);
+        if !self.command.check() {
+            eprintln!(
+                "Fisherman Error: Linter `{}` not found.",
+                &self.command.name
+            );
             exit(1);
         }
-        let mut spinner = Spinner::new(Spinners::Dots, "Linting in progress".into());
-        let success = if self.single_file {
+        let mut spinner = Spinner::new(Spinners::Dots, "Fisherman: Linting in progress".into());
+        let (success, sout, serr) = if self.single_file {
             self.lint_file()
         } else {
             self.lint_project()
         };
 
         if success {
-            spinner.stop_and_persist(&format!("{}", "".green()), "Linting OK".into());
+            spinner.stop_and_persist(&format!("{}", "".green()), "Fisherman: Linting OK".into());
         } else {
-            spinner.stop_and_persist(&format!("{}", "".red()), "Linting failed".into());
+            spinner.stop_and_persist(&format!("{}", "".red()), "Fisherman: Linting Failed".into());
+            eprintln!("{}", sout);
+            eprintln!("{}", serr);
             exit(1);
         }
     }
 
-    fn lint_file(&self) -> bool {
+    fn lint_file(&self) -> (bool, String, String) {
         let mut res = true;
+        let mut sout = String::from("");
+        let mut serr = String::from("");
         let staged_files = Command::new("git")
             .arg("diff")
             .arg("--cached")
@@ -92,44 +85,45 @@ impl Lint {
         let re = Regex::new(&self.file_ext).unwrap();
         for file in staged_files {
             if re.is_match(file.as_bytes()) {
-                println!("{}", file);
+                eprintln!("{}", file);
                 let binding = Vec::new();
-                let args: &Vec<String> = match &self.linter_args {
+                let args: &Vec<String> = match &self.command.args {
                     Some(args) => &args.0,
                     None => &binding,
                 };
 
-                let output = Command::new(&self.linter)
+                let output = Command::new(&self.command.name)
                     .args(args)
                     .arg(file)
                     .output()
                     .expect("");
                 if !output.status.success() {
                     res = false;
-                    let sout = String::from_utf8(output.stdout).expect("Not UTF-8");
-                    let serr = String::from_utf8(output.stderr).expect("Not UTF-8");
-                    println!("{}", sout);
-                    println!("{}", serr);
+                    sout = String::from_utf8(output.stdout).expect("Not UTF-8");
+                    serr = String::from_utf8(output.stderr).expect("Not UTF-8");
                 }
             }
         }
-        res
+        (res, sout, serr)
     }
 
-    fn lint_project(&self) -> bool {
+    fn lint_project(&self) -> (bool, String, String) {
         let binding = Vec::new();
-        let args: &Vec<String> = match &self.linter_args {
+        let mut sout = String::from("");
+        let mut serr = String::from("");
+        let args: &Vec<String> = match &self.command.args {
             Some(args) => &args.0,
             None => &binding,
         };
 
-        let output = Command::new(&self.linter).args(args).output().expect("");
+        let output = Command::new(&self.command.name)
+            .args(args)
+            .output()
+            .expect("");
         if !output.status.success() {
-            let sout = String::from_utf8(output.stdout).expect("Not UTF-8");
-            let serr = String::from_utf8(output.stderr).expect("Not UTF-8");
-            println!("{}", sout);
-            println!("{}", serr);
+            sout = String::from_utf8(output.stdout).expect("Not UTF-8");
+            serr = String::from_utf8(output.stderr).expect("Not UTF-8");
         }
-        output.status.success()
+        (output.status.success(), sout, serr)
     }
 }

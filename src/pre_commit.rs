@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{linter::Lint, logger::log_error, tester::Test};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PreCommit {
     pub lint: Option<Lint>,
     pub test: Option<Test>,
